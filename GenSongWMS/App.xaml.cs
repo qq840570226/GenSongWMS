@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using GenSongWMS.BLL;
 
 namespace GenSongWMS
 {
@@ -13,5 +14,10 @@ namespace GenSongWMS
     /// </summary>
     public partial class App : Application
     {
+        public void Application_Startup(object sender, StartupEventArgs e)
+        {
+            MainWindow window = new MainWindow();
+            window.Show();
+        }
     }
 }

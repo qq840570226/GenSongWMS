@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.27703.2042
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenSongWMS", "GenSongWMS\GenSongWMS.csproj", "{77A2A5DB-55CD-4E82-B5BE-CAADC6B3EB0E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test", "test\test.csproj", "{5055945D-3C69-45D8-AA1D-2BACD2B05122}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{77A2A5DB-55CD-4E82-B5BE-CAADC6B3EB0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{77A2A5DB-55CD-4E82-B5BE-CAADC6B3EB0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{77A2A5DB-55CD-4E82-B5BE-CAADC6B3EB0E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5055945D-3C69-45D8-AA1D-2BACD2B05122}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5055945D-3C69-45D8-AA1D-2BACD2B05122}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5055945D-3C69-45D8-AA1D-2BACD2B05122}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5055945D-3C69-45D8-AA1D-2BACD2B05122}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
