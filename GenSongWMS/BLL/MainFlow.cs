@@ -404,21 +404,66 @@ namespace GenSongWMS.BLL
             for (int i = 0; i < 20; i++)
             {
                 DataCache.DictionaryForkLiftStatus.TryGetValue(clientKey, out ForkLiftStatus forkLiftStatusTemp);
-                if (forkLiftStatusTemp.state == ForkliftStatusEnum.Free  && forkLiftStatusTemp.currentNodeNum == uint.Parse(end))
+                if (forkLiftStatusTemp.state == ForkliftStatusEnum.Free && forkLiftStatusTemp.currentNodeNum == uint.Parse(end))
                 {
                     await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, arcList[0], 0, 0, 1, (uint)ACTStatus.AGV_ACT_MOVE));
                 }
-                else if(forkLiftStatusTemp.state == ForkliftStatusEnum.Free && forkLiftStatusTemp.currentNodeNum == uint.Parse(start))
+                else if (forkLiftStatusTemp.state == ForkliftStatusEnum.Free && forkLiftStatusTemp.currentNodeNum == uint.Parse(start))
                 {
                     await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, arcList1[0], 0, 0, 1, (uint)ACTStatus.AGV_ACT_MOVE));
                 }
             }
-
         }
 
         public static byte[] GetVs()
         {
             return GenSongClientHandler.SetRequestSingleTask(1, DataCache.NewTaskID(), 1, 23, 0, 0, 1, (uint)ACTStatus.AGV_ACT_MOVE).Array;
+        }
+
+        /// <summary>
+        /// 卸货
+        /// </summary>
+        /// <param name="vids"></param>
+        /// <param name="point"></param>
+        /// <param name="delay"></param>
+        /// <returns></returns>
+        public static async Task Unload(string vids, string point, int delay = 10)
+        {
+            string clientKey = null;
+            byte vid = Convert.ToByte(vids);
+            foreach (var item in ClientsID)
+            {
+                if (item.Value == vid)
+                {
+                    clientKey = item.Key;
+                }
+            }
+            // 开始执行
+            Clients.TryGetValue(clientKey, out IChannel channel);
+            await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, Convert.ToUInt32(point), 0, 0, 1, (uint)ACTStatus.AGV_ACT_DROP));
+        }
+
+        /// <summary>
+        /// 装货
+        /// </summary>
+        /// <param name="vids"></param>
+        /// <param name="point"></param>
+        /// <param name="delay"></param>
+        /// <returns></returns>
+        public static async Task Load(string vids, string point, int delay = 10)
+        {
+            string clientKey = null;
+            byte vid = Convert.ToByte(vids);
+            foreach (var item in ClientsID)
+            {
+                if (item.Value == vid)
+                {
+                    clientKey = item.Key;
+                }
+            }
+            // 开始执行
+            Clients.TryGetValue(clientKey, out IChannel channel);
+            await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, Convert.ToUInt32(point), 0, 0, 1, (uint)ACTStatus.AGV_ACT_PICK));
         }
     }
 }

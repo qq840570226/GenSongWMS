@@ -58,23 +58,22 @@
                         <Grid>
                             <Label Content="装货: " HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Height="23" />
                             <Label Content="叉车ID" HorizontalAlignment="Left" Margin="70,10,0,0" VerticalAlignment="Top" Height="23"/>
-                            <TextBox HorizontalAlignment="Left" Height="23" Margin="120,10,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
-                            <Button Name="LoadCommandTest" Content="执行命令" HorizontalAlignment="Left" Margin="600,10,0,0" VerticalAlignment="Top" Width="75"/>
+                            <TextBox Name="txtLoadForkliftID" HorizontalAlignment="Left" Height="23" Margin="120,10,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+                            <Button Name="btnLoadCommandTest" Content="执行命令" HorizontalAlignment="Left" Margin="600,10,0,0" VerticalAlignment="Top" Width="75" Click="btnLoadCommandTest_Click"/>
                             
                             <Label Content="卸货: " HorizontalAlignment="Left" Margin="10,60,0,0" VerticalAlignment="Top" Height="23"/>
                             <Label Content="叉车ID" HorizontalAlignment="Left" Margin="70,60,0,0" VerticalAlignment="Top" Height="23"/>
-                            <TextBox HorizontalAlignment="Left" Height="23" Margin="120,60,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
-                            <Button Name="UnloadCommandTest" Content="执行命令" HorizontalAlignment="Left" Margin="600,60,0,0" VerticalAlignment="Top" Width="75"/>
+                            <TextBox Name="txtUnloadForkliftID" HorizontalAlignment="Left" Height="23" Margin="120,60,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+                            <Button Name="btnUnloadCommandTest" Content="执行命令" HorizontalAlignment="Left" Margin="600,60,0,0" VerticalAlignment="Top" Width="75" Click="btnUnloadCommandTest_Click"/>
                             
                             <Label Content="移动: " HorizontalAlignment="Left" Margin="10,110,0,0" VerticalAlignment="Top" Height="23"/>
                             <Label Content="叉车ID" HorizontalAlignment="Left" Margin="70,110,0,0" VerticalAlignment="Top" Height="23"/>
-                            <TextBox HorizontalAlignment="Left" Height="23" Margin="120,110,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+                            <TextBox Name="txtMoveForkliftID" HorizontalAlignment="Left" Height="23" Margin="120,110,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
                             <Label Content="从:" HorizontalAlignment="Left" Margin="250,110,0,0" VerticalAlignment="Top" Height="23"/>
-                            <TextBox HorizontalAlignment="Left" Height="23" Margin="280,110,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+                            <TextBox Name="txtMoveFrom" HorizontalAlignment="Left" Height="23" Margin="280,110,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
                             <Label Content="到:" HorizontalAlignment="Left" Margin="410,110,0,0" VerticalAlignment="Top" Height="23"/>
-                            <TextBox HorizontalAlignment="Left" Height="23" Margin="440,110,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
-                            <Button Name="MoveCommandTest" Content="执行命令" HorizontalAlignment="Left" Margin="600,110,0,0" VerticalAlignment="Top" Width="75"/>
-
+                            <TextBox Name="txtMoveTo" HorizontalAlignment="Left" Height="23" Margin="440,110,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+                            <Button Name="btnMoveCommandTest" Content="执行命令" HorizontalAlignment="Left" Margin="600,110,0,0" VerticalAlignment="Top" Width="75" Click="btnMoveCommandTest_Click"/>
                         </Grid>
                     </GroupBox>
                 </Grid>

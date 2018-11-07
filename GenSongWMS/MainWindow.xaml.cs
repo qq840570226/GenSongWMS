@@ -288,5 +288,29 @@ namespace GenSongWMS
             ConnectGrid.Margin = new Thickness(0, ConnectGrid.Margin.Top + e.Delta, 0, 0);
             Panel.SetZIndex(ConnectGrid, -10);
         }
+
+        private void btnLoadCommandTest_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private async void btnUnloadCommandTest_Click(object sender, RoutedEventArgs e)
+        {
+            string clientKey = null;
+            byte vid = Convert.ToByte(txtUnloadForkliftID.Text);
+            foreach (var item in ClientsID)
+            {
+                if (item.Value == vid)
+                {
+                    clientKey = item.Key;
+                }
+            }
+            await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, Convert.ToUInt32(end), 0, 0, 1, (uint)ACTStatus.AGV_ACT_DROP));
+        }
+
+        private void btnMoveCommandTest_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }
