@@ -5,55 +5,106 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GenSongWMS"
         mc:Ignorable="d"
-        Title="井松主界面" Height="650" Width="900" Closing="Window_Closing">
+        Title="井松主界面" Height="800" Width="1030" Closing="Window_Closing" ResizeMode="NoResize" MouseWheel="Window_MouseWheel">
     <Grid>
-        <Label x:Name="lblAGVIp" Content="小车IP：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="62" FontSize="14" Margin="4,22,0,0" Grid.Row="1"/>
-        <TextBox x:Name="txtNewAGVIp" HorizontalAlignment="Left" Height="23" TextWrapping="Wrap" VerticalAlignment="Top" Width="111" Margin="64,24,0,0" Grid.Row="1"/>
-        <Button x:Name="btnAddAGV" Content="添加小车" HorizontalAlignment="Left" Margin="197,27,0,0" VerticalAlignment="Top" Width="75" Click="BtnAddAGV_Click"/>
-        <GroupBox x:Name="stockIn" Header="入库" Height="88" Margin="0,63,9.6,0" VerticalAlignment="Top">
-            <Canvas Height="52" Margin="10,10,-2,0" VerticalAlignment="Top">
-                <Label x:Name="label" Content="订单号：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="59" Canvas.Left="10" Canvas.Top="10"/>
-                <TextBox x:Name="orderNum" Height="23" Canvas.Left="74" TextWrapping="Wrap" Text="" Canvas.Top="10" Width="100"/>
-                <Label x:Name="label_Copy1" Content="目标库位：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="59" Canvas.Left="392" Canvas.Top="10"/>
-                <TextBox x:Name="targetStorageLocation" Height="23" Canvas.Left="466" TextWrapping="Wrap" Text="" Canvas.Top="10" Width="110"/>
-                <Button Content="入  库" x:Name="btnStockIn" Canvas.Left="608" Canvas.Top="10" Width="70" Height="23" RenderTransformOrigin="-0.229,0.435" Click="BtnStockIn_Click"/>
-                <Label x:Name="label_Copy" Content="卸货节点：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="59" Canvas.Left="197" Canvas.Top="10"/>
-                <TextBox x:Name="unloadNodeTextbox" Height="23" Canvas.Left="261" TextWrapping="Wrap" Text="" Canvas.Top="10" Width="100"/>
-            </Canvas>
-        </GroupBox>
+        <TabControl Panel.ZIndex="10">
+            <TabItem Header="连接">
+                <Grid Background="#FFE5E5E5">
+                    <GroupBox Header="新建连接" Height="100" Margin="0,10,-0.2,0" VerticalAlignment="Top">
+                        <Grid>
+                            <Label x:Name="lblAGVIp" Content="小车IP：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="62" FontSize="14" Margin="4,22,0,0" Grid.Row="1"/>
+                            <TextBox x:Name="txtNewAGVIp" HorizontalAlignment="Left" Height="23" TextWrapping="Wrap" VerticalAlignment="Top" Width="111" Margin="64,25,0,0" Text="192.168.2.110"/>
+                            <Button x:Name="btnAddAGV" Content="添加叉车" HorizontalAlignment="Left" Margin="624,27,0,0" VerticalAlignment="Top" Width="75" Click="BtnAddAGV_Click"/>
+                            <Label x:Name="lblAGVPort" Content="小车端口：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="72" FontSize="14" Margin="188,22,0,0"/>
+                            <TextBox x:Name="txtNewAGVPort" HorizontalAlignment="Left" Height="23" TextWrapping="Wrap" VerticalAlignment="Top" Width="111" Margin="272,25,0,0" Text="9090"/>
+                            <Label x:Name="lblAGVNum" Content="小车编号：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="72" FontSize="14" Margin="397,22,0,0"/>
+                            <TextBox x:Name="txtNewAGVNum" HorizontalAlignment="Left" Height="23" TextWrapping="Wrap" VerticalAlignment="Top" Width="111" Margin="481,25,0,0" Text="0"/>
+                            <Button x:Name="btnLoadMap" Content="读取地图" HorizontalAlignment="Left" Margin="759,27,0,0" VerticalAlignment="Top" Width="75" Click="btnLoadMap_Click"/>
+                        </Grid>
+                    </GroupBox>
+                    <GroupBox Header="已有连接" Margin="0,120,0.2,9.8">
+                        <Grid Panel.ZIndex="-10">
+                            <Grid Name="ConnectGrid" Margin="0,0,0,0" Panel.ZIndex="-10">
 
-        <GroupBox x:Name="stockOut" Header="出库" Height="96" Margin="0,162,9.6,0" VerticalAlignment="Top">
-            <Canvas Height="48" Margin="10,10,-2.8,0" VerticalAlignment="Top">
-                <Label x:Name="label_Copy2" Content="库  区：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="59" Canvas.Left="10" Canvas.Top="10"/>
-                <TextBox x:Name="storageArea" Height="23" Canvas.Left="74" TextWrapping="Wrap" Text="" Canvas.Top="10" Width="100"/>
-                <Button Content="出  库" x:Name="btnStockOut" Canvas.Left="608" Canvas.Top="8" Width="70" Height="25" Click="BtnStockOut_Click"/>
-                <Label x:Name="label_Copy3" Content="装车节点：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="59" Canvas.Left="392" Canvas.Top="10"/>
-                <TextBox x:Name="loadNodeTextbox" Height="23" Canvas.Left="466" TextWrapping="Wrap" Text="" Canvas.Top="10" Width="110"/>
-                <Label x:Name="label_Copy4" Content="取货节点：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="59" Canvas.Left="197" Canvas.Top="10"/>
-                <TextBox x:Name="takeStockNode" Height="23" Canvas.Left="261" TextWrapping="Wrap" Text="" Canvas.Top="10" Width="100"/>
-            </Canvas>
-        </GroupBox>
+                            </Grid>
+                        </Grid>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+            <TabItem Header="详细状态">
+                <Grid Background="#FFE5E5E5">
+                    <DataGrid x:Name="DataGridForkliftStatus" AutoGenerateColumns ="False" Margin="10,10,10,10">
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style TargetType="{x:Type DataGridColumnHeader}">
+                                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn x:Name="forkliftID" Header="叉车标识" IsReadOnly="True" Width="120" Binding="{Binding FORKLIFTID}"/>
+                            <DataGridTextColumn x:Name="curSts" Header="状态" Width="120" Binding="{Binding CURSTATUS}"/>
+                            <DataGridTextColumn x:Name="curNode" Header="节点" Width="120" Binding="{Binding CURNODE}"/>
+                            <DataGridTextColumn x:Name="curAGVAngle" Header="叉车角度" Width="120" Binding="{Binding TAGETAGVANGLE}"/>
+                            <DataGridTextColumn x:Name="electricityValue" Header="电量" Width="120" Binding="{Binding ELECTRICITYVALUE}"/>
+                            <DataGridTextColumn x:Name="pos_ux" Header="物理X坐标" Width="120" Binding="{Binding POS_UX}"/>
+                            <DataGridTextColumn x:Name="pos_uy" Header="物理Y坐标" Width="120" Binding="{Binding POS_UY}"/>
+                            <DataGridTextColumn x:Name="in_jam" Header="是否处于堵塞中" Width="120" Binding="{Binding IN_JAM}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="指令">
+                <Grid Background="#FFE5E5E5">
+                    <GroupBox Header="详细指令">
+                        <Grid>
+                            <Label Content="装货: " HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Height="23" />
+                            <Label Content="叉车ID" HorizontalAlignment="Left" Margin="70,10,0,0" VerticalAlignment="Top" Height="23"/>
+                            <TextBox HorizontalAlignment="Left" Height="23" Margin="120,10,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+                            <Button Name="LoadCommandTest" Content="执行命令" HorizontalAlignment="Left" Margin="600,10,0,0" VerticalAlignment="Top" Width="75"/>
+                            
+                            <Label Content="卸货: " HorizontalAlignment="Left" Margin="10,60,0,0" VerticalAlignment="Top" Height="23"/>
+                            <Label Content="叉车ID" HorizontalAlignment="Left" Margin="70,60,0,0" VerticalAlignment="Top" Height="23"/>
+                            <TextBox HorizontalAlignment="Left" Height="23" Margin="120,60,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+                            <Button Name="UnloadCommandTest" Content="执行命令" HorizontalAlignment="Left" Margin="600,60,0,0" VerticalAlignment="Top" Width="75"/>
+                            
+                            <Label Content="移动: " HorizontalAlignment="Left" Margin="10,110,0,0" VerticalAlignment="Top" Height="23"/>
+                            <Label Content="叉车ID" HorizontalAlignment="Left" Margin="70,110,0,0" VerticalAlignment="Top" Height="23"/>
+                            <TextBox HorizontalAlignment="Left" Height="23" Margin="120,110,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+                            <Label Content="从:" HorizontalAlignment="Left" Margin="250,110,0,0" VerticalAlignment="Top" Height="23"/>
+                            <TextBox HorizontalAlignment="Left" Height="23" Margin="280,110,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+                            <Label Content="到:" HorizontalAlignment="Left" Margin="410,110,0,0" VerticalAlignment="Top" Height="23"/>
+                            <TextBox HorizontalAlignment="Left" Height="23" Margin="440,110,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+                            <Button Name="MoveCommandTest" Content="执行命令" HorizontalAlignment="Left" Margin="600,110,0,0" VerticalAlignment="Top" Width="75"/>
 
-        <GroupBox Header="叉车状态" Height="299" Margin="0,277,9.6,0" VerticalAlignment="Top" RenderTransformOrigin="0.12,0.05">
-            <Canvas Height="279" Margin="10,10,-2.8,-12.2" VerticalAlignment="Top">
-                <DataGrid x:Name="DataGridForkliftStatus" Height="259" AutoGenerateColumns ="False" Canvas.Left="10" Canvas.Top="10" Width="844">
-                    <DataGrid.ColumnHeaderStyle>
-                        <Style TargetType="{x:Type DataGridColumnHeader}">
-                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                        </Style>
-                    </DataGrid.ColumnHeaderStyle>
-                    <DataGrid.Columns>
-                        <DataGridTextColumn x:Name="forkliftID" Header="叉车标识" IsReadOnly="True" Width="100" Binding="{Binding FORKLIFTID}"/>
-                        <DataGridTextColumn x:Name="curSts" Header="状态" Width="100" Binding="{Binding CURSTATUS}"/>
-                        <DataGridTextColumn x:Name="curNode" Header="节点" Width="100" Binding="{Binding CURNODE}"/>
-                        <DataGridTextColumn x:Name="curAGVAngle" Header="叉车角度" Width="100" Binding="{Binding TAGETAGVANGLE}"/>
-                        <DataGridTextColumn x:Name="electricityValue" Header="电量" Width="100" Binding="{Binding ELECTRICITYVALUE}"/>
-                        <DataGridTextColumn x:Name="pos_ux" Header="物理X坐标" Width="100" Binding="{Binding POS_UX}"/>
-                        <DataGridTextColumn x:Name="pos_uy" Header="物理Y坐标" Width="100" Binding="{Binding POS_UY}"/>
-                        <DataGridTextColumn x:Name="in_jam" Header="是否处于堵塞中" Width="100" Binding="{Binding IN_JAM}"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </Canvas>
-        </GroupBox>
+                        </Grid>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+            <TabItem Header="组合指令">
+                <Grid Background="#FFE5E5E5">
+                    <GroupBox x:Name="stockIn" Header="入库" Height="88" Margin="0,63,9.6,0" VerticalAlignment="Top">
+                        <Canvas Height="52" Margin="10,10,-2,0" VerticalAlignment="Top">
+                            <Label x:Name="label" Content="订单号：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="59" Canvas.Left="10" Canvas.Top="10"/>
+                            <TextBox x:Name="orderNum" Height="23" Canvas.Left="74" TextWrapping="Wrap" Text="0001" Canvas.Top="10" Width="100"/>
+                            <Label x:Name="label_Copy1" Content="目标库位：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="59" Canvas.Left="392" Canvas.Top="10"/>
+                            <TextBox x:Name="targetStorageLocation" Height="23" Canvas.Left="466" TextWrapping="Wrap" Text="10100" Canvas.Top="10" Width="110"/>
+                            <Button Content="入  库" x:Name="btnStockIn" Canvas.Left="608" Canvas.Top="10" Width="70" Height="23" RenderTransformOrigin="-0.229,0.435" Click="BtnStockIn_Click"/>
+                            <Label x:Name="label_Copy" Content="卸货节点：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="59" Canvas.Left="197" Canvas.Top="10"/>
+                            <TextBox x:Name="unloadNodeTextbox" Height="23" Canvas.Left="261" TextWrapping="Wrap" Text="10301" Canvas.Top="10" Width="100"/>
+                        </Canvas>
+                    </GroupBox>
+                    <GroupBox x:Name="stockOut" Header="出库" Height="96" Margin="0,162,9.6,0" VerticalAlignment="Top">
+                        <Canvas Height="48" Margin="10,10,-2.8,0" VerticalAlignment="Top">
+                            <Label x:Name="label_Copy2" Content="库  区：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="59" Canvas.Left="10" Canvas.Top="10"/>
+                            <TextBox x:Name="storageArea" Height="23" Canvas.Left="74" TextWrapping="Wrap" Text="" Canvas.Top="10" Width="100"/>
+                            <Button Content="出  库" x:Name="btnStockOut" Canvas.Left="608" Canvas.Top="8" Width="70" Height="25" Click="BtnStockOut_Click"/>
+                            <Label x:Name="label_Copy3" Content="装车节点：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="59" Canvas.Left="392" Canvas.Top="10"/>
+                            <TextBox x:Name="loadNodeTextbox" Height="23" Canvas.Left="466" TextWrapping="Wrap" Text="" Canvas.Top="10" Width="110"/>
+                            <Label x:Name="label_Copy4" Content="取货节点：" HorizontalAlignment="Left" VerticalAlignment="Top" Width="59" Canvas.Left="197" Canvas.Top="10"/>
+                            <TextBox x:Name="takeStockNode" Height="23" Canvas.Left="261" TextWrapping="Wrap" Text="" Canvas.Top="10" Width="100"/>
+                        </Canvas>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>

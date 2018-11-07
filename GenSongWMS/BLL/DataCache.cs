@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Xml.Linq;
 using BryantG;
@@ -23,12 +24,12 @@ namespace GenSongWMS.BLL
         /// <summary>
         /// 所有边路径
         /// </summary>
-        public static ConcurrentDictionary<string, List<uint>> AllArcPaths { get; set; }
+        public static ConcurrentDictionary<PointToPoint, List<uint>> AllArcPaths { get; set; }
 
         /// <summary>
         /// 所有点路径
         /// </summary>
-        public static ConcurrentDictionary<string, List<uint>> AllPointPaths { get; set; }
+        public static ConcurrentDictionary<PointToPoint, List<uint>> AllPointPaths { get; set; }
 
         /// <summary>
         /// 冲突节点
@@ -64,7 +65,7 @@ namespace GenSongWMS.BLL
         /// <returns></returns>
         public static bool GetPath(string startPoint, string endPoint, out List<uint> result)
         {
-            return AllArcPaths.TryGetValue($"{startPoint},{endPoint}", out result);
+            return AllArcPaths.TryGetValue(new PointToPoint(startPoint,endPoint), out result);
         }
 
         /// <summary>
@@ -76,7 +77,7 @@ namespace GenSongWMS.BLL
         /// <returns></returns>
         public static bool GetPoints(string startPoint, string endPoint, out List<uint> result)
         {
-            return AllPointPaths.TryGetValue($"{startPoint},{endPoint}", out result);
+            return AllPointPaths.TryGetValue(new PointToPoint(startPoint,endPoint), out result);
         }
 
         /// <summary>
@@ -92,8 +93,8 @@ namespace GenSongWMS.BLL
             string strArcsName;
             List<uint> arcList;
             List<uint> pointList;
-            AllArcPaths = new ConcurrentDictionary<string, List<uint>>();
-            AllPointPaths = new ConcurrentDictionary<string, List<uint>>();
+            AllArcPaths = new ConcurrentDictionary<PointToPoint, List<uint>>();
+            AllPointPaths = new ConcurrentDictionary<PointToPoint, List<uint>>();
 
             Point point, startPoint, endPoint;
             XDocument myXDoc = new XDocument(new XElement("allPaths"));
@@ -113,7 +114,6 @@ namespace GenSongWMS.BLL
                     arcList.Clear();
                     pointList.Clear();
 
-                    Vector tmpVector = new Vector();
 
                     foreach (Path path in item.Value.paths)
                     {
@@ -124,14 +124,14 @@ namespace GenSongWMS.BLL
                             point = path.path[i];
                             strPointName = $"{strPointName}-{point.ID}";
                             map.arcsID.TryGetValue($"{path.path[i - 1].ID},{path.path[i].ID}", out uint tmpUint);
-                            map.arcs.TryGetValue(tmpUint, out tmpVector);
+                            map.arcs.TryGetValue(tmpUint, out Vector tmpVector);
                             strArcsName = $"{strArcsName}-{tmpVector.ArcCode}";
                             pointList.Add(path.path[i].ID);
                             arcList.Add(tmpVector.ArcCode);
                         }
                         
-                        AllArcPaths.TryAdd($"{startPoint.ID},{endPoint.ID}", arcList);
-                        AllPointPaths.TryAdd($"{startPoint.ID},{endPoint.ID}", pointList);
+                        AllArcPaths.TryAdd(new PointToPoint(startPoint.ID, endPoint.ID), arcList);
+                        AllPointPaths.TryAdd(new PointToPoint(startPoint.ID, endPoint.ID), pointList);
 
                         strArcsName = strArcsName.Substring(1, strArcsName.Length - 1);
 
@@ -166,6 +166,24 @@ namespace GenSongWMS.BLL
                     TaskID = 0;
                 return TaskID++;
             }
+        }
+    }
+
+    public struct PointToPoint
+    {
+        public readonly uint Start;
+        public readonly uint End;
+
+        public PointToPoint(uint start, uint end)
+        {
+            Start = start;
+            End = end;
+        }
+
+        public PointToPoint(string start, string end)
+        {
+            Start = Convert.ToUInt32(start);
+            End = Convert.ToUInt32(end);
         }
     }
 }

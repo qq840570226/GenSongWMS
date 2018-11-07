@@ -53,11 +53,7 @@ namespace GenSongWMS.BLL
                     case MsgType.TB:
                         receiveData = new byte[13];
                         buffer.GetBytes(2, receiveData);
-                        task_issued_response taskResponse = new task_issued_response
-                        {
-                            recv_state = receiveData[6],
-                            task_number = (uint)(receiveData[7] | receiveData[8] << 8 | receiveData[9] << 16 | receiveData[10] << 24)
-                        };
+                        task_issued_response taskResponse = new task_issued_response(receiveData[6], (uint)(receiveData[7] | receiveData[8] << 8 | receiveData[9] << 16 | receiveData[10] << 24));
                         break;
                     case MsgType.TD:
                         break;
@@ -65,26 +61,24 @@ namespace GenSongWMS.BLL
                     case MsgType.SF:
                         receiveData = new byte[33];
                         buffer.GetBytes(2, receiveData);
-                        ForkLiftStatus forkliftStatusRes = new ForkLiftStatus
-                        {
-                            state = GetForkliftStatus(receiveData[6]),
-                            currentNodeNum = (uint)(receiveData[7] | receiveData[8] << 8 | receiveData[9] << 16 | receiveData[10] << 24),
-                            currentPathNum = (ushort)(receiveData[11] | receiveData[12] << 8),
-                            electricityValue = (ushort)(receiveData[13] | receiveData[14] << 8),
-                            faultCode = (uint)(receiveData[15] | receiveData[16] << 8 | receiveData[17] << 16 | receiveData[18] << 24),
-                            pos_ux = receiveData[19] | receiveData[20] << 8 | receiveData[21] << 16 | receiveData[22] << 24,
-                            pos_uy = receiveData[23] | receiveData[24] << 8 | receiveData[25] << 16 | receiveData[26] << 24,
-                            pos_uth = receiveData[27] | receiveData[28] << 8 | receiveData[29] << 16 | receiveData[30] << 24
-                        };
+                        ForkLiftStatus forkliftStatusRes = new ForkLiftStatus(GetForkliftStatus(receiveData[6]),
+                            (uint)(receiveData[7] | receiveData[8] << 8 | receiveData[9] << 16 | receiveData[10] << 24),
+                            (ushort)(receiveData[11] | receiveData[12] << 8),
+                            (ushort)(receiveData[13] | receiveData[14] << 8),
+                            (uint)(receiveData[15] | receiveData[16] << 8 | receiveData[17] << 16 | receiveData[18] << 24),
+                            (int)(receiveData[19] | receiveData[20] << 8 | receiveData[21] << 16 | receiveData[22] << 24),
+                            (int)(receiveData[23] | receiveData[24] << 8 | receiveData[25] << 16 | receiveData[26] << 24),
+                            (int)(receiveData[27] | receiveData[28] << 8 | receiveData[29] << 16 | receiveData[30] << 24)
+                            );
                         // 增量插入
-                        string tempKey = context.Channel.RemoteAddress.ToString();
-                        DataCache.DictionaryForkLiftStatus.AddOrUpdate(tempKey, forkliftStatusRes, (key, value) => { return value = forkliftStatusRes; });
+                        DataCache.DictionaryForkLiftStatus.AddOrUpdate(context.Channel.RemoteAddress.ToString(), forkliftStatusRes, (key, value) => { return value = forkliftStatusRes; });
+                        DataCache.DictionaryConfictPoint.AddOrUpdate(forkliftStatusRes.currentNodeNum, true, (key, value) => { return value = true; });
                         break;
                     //任务上报完成
                     case MsgType.TF:
                         receiveData = new byte[12];
                         buffer.GetBytes(2, receiveData);
-                        uint taskNo = (uint)(receiveData[6] | receiveData[7] << 8 | receiveData[8] << 16 | receiveData[9] << 24);
+                        ulong taskNo = (uint)(receiveData[6] | receiveData[7] << 8 | receiveData[8] << 16 | receiveData[9] << 24);
                         // send
                         context.WriteAndFlushAsync(SetResponseTaskFinishMsg(receiveData[2], taskNo));
                         break;
@@ -110,7 +104,12 @@ namespace GenSongWMS.BLL
         /// <param name="context"></param>
         public override void ChannelInactive(IChannelHandlerContext context)
         {
-            MessageBox.Show(context.Channel.RemoteAddress.ToString() + "已断开!");
+            string clientKey = context.Channel.RemoteAddress.ToString();
+            // 从字典中删除
+            MainFlow.Clients.TryRemove(clientKey, out IChannel channel);
+            MainFlow.ClientsID.TryRemove(clientKey, out byte value);
+            DataCache.DictionaryForkLiftStatus.TryRemove(clientKey, out ForkLiftStatus forkLiftStatus);
+            MessageBox.Show(clientKey + "已断开!");
         }
 
         /// <summary>
@@ -130,7 +129,7 @@ namespace GenSongWMS.BLL
         /// <returns></returns>
         public MsgType GetBackMsgType(byte[] receiveData)
         {
-            ushort temp = (ushort)(receiveData[0] << 8 | receiveData[1]);
+            uint temp = (uint)(receiveData[0] << 8 | receiveData[1]);
 
             try
             {
@@ -173,7 +172,7 @@ namespace GenSongWMS.BLL
         /// <param name="reserved"></param>
         /// <param name="actType"></param>
         /// <returns></returns>
-        public static IByteBuffer SetRequestSingleTask(byte vehicleID, uint taskNo, ushort mapNo, uint segNo, uint loadParam, ushort vehicleDirection, uint reserved, uint actType)
+        public static IByteBuffer SetRequestSingleTask(byte vehicleID, ulong taskNo, uint mapNo, ulong segNo, ulong loadParam, uint vehicleDirection, ulong reserved, ulong actType)
         {
             byte[] sendMsg = new byte[32];
 
@@ -222,7 +221,7 @@ namespace GenSongWMS.BLL
             sendMsg[29] = (byte)(actType >> 24 & 0xFF);
 
             //CRC16校验码
-            ushort crcTmp = 0x0;
+            uint crcTmp = 0x0;
 
             crcTmp = CRC16(sendMsg, 30);
             //crcTmp = CrcChk(Encoding.ASCII.GetChars(SendMsgTmp), 32);
@@ -239,7 +238,7 @@ namespace GenSongWMS.BLL
         /// <param name="vehicleID"></param>
         /// <param name="taskNo"></param>
         /// <returns></returns>
-        public static IByteBuffer SetResponseTaskFinishMsg(byte vehicleID, uint taskNo)
+        public static IByteBuffer SetResponseTaskFinishMsg(byte vehicleID, ulong taskNo)
         {
             byte[] sendMsg = new byte[14];
 
@@ -261,7 +260,7 @@ namespace GenSongWMS.BLL
             sendMsg[11] = (byte)(taskNo >> 24 & 0xFF);
 
             //CRC16校验码
-            ushort crcTmp = 0x0;
+            uint crcTmp = 0x0;
 
             crcTmp = CRC16(sendMsg, 12);
             //CRC16校验
@@ -291,7 +290,7 @@ namespace GenSongWMS.BLL
             //附加功能码
             sendMsg[7] = 0x00;
             //CRC16校验码
-            ushort crcTmp = 0x0;
+            uint crcTmp = 0x0;
 
             crcTmp = CRC16(sendMsg, 8);
             //CRC16校验
@@ -307,11 +306,11 @@ namespace GenSongWMS.BLL
         /// <param name="Pushdata"></param>
         /// <param name="length"></param>
         /// <returns></returns>
-        private static ushort CRC16(byte[] Pushdata, int length)
+        private static uint CRC16(byte[] Pushdata, int length)
         {
-            ushort Reg_CRC = 0xffff;
-            ushort Temp_reg = 0x00;
-            ushort i, j;
+            uint Reg_CRC = 0xffff;
+            uint Temp_reg = 0x00;
+            uint i, j;
             for (i = 0; i < length; i++)
             {
                 Reg_CRC ^= Pushdata[i];
@@ -319,14 +318,14 @@ namespace GenSongWMS.BLL
                 {
                     if ((Reg_CRC & 0x0001) != 0)
 
-                        Reg_CRC = (ushort)((Reg_CRC >> 1) ^ 0xA001);
+                        Reg_CRC = (uint)((Reg_CRC >> 1) ^ 0xA001);
 
                     else
                         Reg_CRC >>= 1;
                 }
             }
             Temp_reg = (byte)(Reg_CRC >> 8);
-            return (ushort)(Reg_CRC << 8 | Temp_reg);
+            return (uint)(Reg_CRC << 8 | Temp_reg);
         }
     }
 
@@ -366,15 +365,38 @@ namespace GenSongWMS.BLL
     /// </summary>
     public struct ForkLiftStatus
     {
-        public ForkliftStatusEnum state; //状态：1前往取货点，2取货点取货，3前往送货点，4送货点,5：任务完成,6：空闲,7：故障,8：充电中,9：手动  
-        public uint currentNodeNum;//当前节点号
-        public ushort currentPathNum;//当前地图号
-        public ushort electricityValue; //电量值
-        public uint faultCode;//故障代码
-        public int pos_ux;     //坐标X，单位mm
-        public int pos_uy;
-        public int pos_uth;
-        public ushort currentAngle;//当前姿态角度
+        public readonly ForkliftStatusEnum state; //状态：1前往取货点，2取货点取货，3前往送货点，4送货点,5：任务完成,6：空闲,7：故障,8：充电中,9：手动  
+        public readonly uint currentNodeNum;//当前节点号
+        public readonly ushort currentPathNum;//当前地图号
+        public readonly ushort electricityValue; //电量值
+        public readonly uint faultCode;//故障代码
+        public readonly int pos_ux;     //坐标X，单位mm
+        public readonly int pos_uy;
+        public readonly int currentAngle;//当前姿态角度
+
+        /// <summary>
+        /// 叉车详细状态
+        /// </summary>
+        /// <param name="state">状态：1前往取货点，2取货点取货，3前往送货点，4送货点,5：任务完成,6：空闲,7：故障,8：充电中,9：手动</param>
+        /// <param name="currentNodeNum">当前节点号</param>
+        /// <param name="currentPathNum">当前地图号</param>
+        /// <param name="electricityValue">电量值</param>
+        /// <param name="faultCode">故障代码</param>
+        /// <param name="pos_ux">坐标X，单位mm</param>
+        /// <param name="pos_uy">坐标Y，单位mm</param>
+        /// <param name="pos_uth"></param>
+        /// <param name="currentAngle">当前姿态角度</param>
+        public ForkLiftStatus(ForkliftStatusEnum state, uint currentNodeNum, ushort currentPathNum, ushort electricityValue, uint faultCode, int pos_ux, int pos_uy, int currentAngle)
+        {
+            this.state = state;
+            this.currentNodeNum = currentNodeNum;
+            this.currentPathNum = currentPathNum;
+            this.electricityValue = electricityValue;
+            this.faultCode = faultCode;
+            this.pos_ux = pos_ux;
+            this.pos_uy = pos_uy;
+            this.currentAngle = currentAngle;
+        }
     };
 
     /// <summary>
@@ -382,8 +404,14 @@ namespace GenSongWMS.BLL
     /// </summary>
     public struct task_issued_response
     {
-        public byte recv_state;   //接收状态
-        public uint task_number;//任务编号
+        public readonly byte recv_state;   //接收状态
+        public readonly ulong task_number;//任务编号
+
+        public task_issued_response(byte recv_state, ulong task_number)
+        {
+            this.recv_state = recv_state;
+            this.task_number = task_number;
+        }
     };
 
     /// <summary>

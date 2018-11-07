@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace GenSongWMS.BLL
 {
@@ -30,6 +31,11 @@ namespace GenSongWMS.BLL
         public static ConcurrentDictionary<string, IChannel> Clients { get; set; }
 
         /// <summary>
+        /// 客户端字典ID
+        /// </summary>
+        public static ConcurrentDictionary<string, byte> ClientsID { get; set; }
+
+        /// <summary>
         /// 同步叉车状态循环条件
         /// </summary>
         private static bool syncForkliftStatus = true;
@@ -41,6 +47,7 @@ namespace GenSongWMS.BLL
         {
             group = new MultithreadEventLoopGroup();
             Clients = new ConcurrentDictionary<string, IChannel>();
+            ClientsID = new ConcurrentDictionary<string, byte>();
             bootstrap = new Bootstrap();
             bootstrap
                 .Group(group)
@@ -53,7 +60,7 @@ namespace GenSongWMS.BLL
                 }));
 
             // 启动查询进程
-            Task taskRetrieveForkliftStatusStatus = Task.Factory.StartNew(GetForkliftStatusStatusAsync);
+            Task taskRetrieveForkliftStatusStatus = Task.Factory.StartNew(GetForkliftStatusStatusAsync, TaskCreationOptions.LongRunning);
         }
 
         /// <summary>
@@ -66,9 +73,9 @@ namespace GenSongWMS.BLL
                 // 结束查询循环
                 syncForkliftStatus = false;
                 // 关闭客户端
-                foreach (var item in Clients)
+                foreach (var item in Clients.Values)
                 {
-                    await item.Value.CloseAsync();
+                    await item.CloseAsync();
                 }
             }
             finally
@@ -82,24 +89,21 @@ namespace GenSongWMS.BLL
         /// 新建连接
         /// </summary>
         /// <param name="ip"></param>
+        /// <param name="port"></param>
         /// <returns></returns>
-        public static async Task<bool> AddForkliftAsync(string ip)
+        public static async Task<bool> AddForkliftAsync(string ip, string port = "10000", byte id = 0)
         {
             try
             {
-                // 先查一下有没有连接过
-                if (Clients.TryGetValue(ip + ":9090", out IChannel channelTemp))
-                {
-                    if (channelTemp.Active)
-                    {
-                        return false;
-                    }
-                }
                 // 生产一个channel
-                IChannel channel = await bootstrap.ConnectAsync(new IPEndPoint(IPAddress.Parse(ip), 9090));
-                return Clients.TryAdd(ip + "9090", channel);
+                //IChannel channel = await Task.Run(() => bootstrap.ConnectAsync(new IPEndPoint(IPAddress.Parse(ip), Convert.ToInt32(port))));
+                IChannel channel = await bootstrap.ConnectAsync(new IPEndPoint(IPAddress.Parse(ip), Convert.ToInt32(port)));
+                ClientsID.TryAdd(channel.RemoteAddress.ToString(), id);
+                DataCache.DictionaryForkLiftStatus.TryAdd(channel.RemoteAddress.ToString(), default);
+                DataCache.DictionaryTrafficJam.TryAdd(channel.RemoteAddress.ToString(), default);
+                return Clients.TryAdd(channel.RemoteAddress.ToString(), channel);
             }
-            catch
+            catch (Exception)
             {
                 return false;
             }
@@ -108,15 +112,32 @@ namespace GenSongWMS.BLL
         /// <summary>
         /// 关闭连接
         /// </summary>
-        /// <param name="ipAndPort"></param>
+        /// <param name="ip"></param>
         /// <returns></returns>
-        public static async Task<bool> RemoveForkliftAsync(string ipAndPort)
+        public static async Task<bool> RemoveForkliftAsync(string ip)
         {
             try
             {
-                Clients.TryRemove(ipAndPort, out IChannel channel);
+                // 查一下有没有
+                string clientKey = null;
+                foreach (var item in Clients.Keys)
+                {
+                    if (item.Contains(ip))
+                    {
+                        clientKey = item;
+                        break;
+                    }
+                }
+                if (clientKey == null)
+                {
+                    return true;
+                }
+                // 从字典中删除
+                Clients.TryRemove(clientKey, out IChannel channel);
+                ClientsID.TryRemove(clientKey, out byte value);
                 if (channel.Active)
                 {
+                    //await Task.Run(() => channel.CloseAsync());
                     await channel.CloseAsync();
                 }
                 return true;
@@ -136,11 +157,11 @@ namespace GenSongWMS.BLL
             while (syncForkliftStatus)
             {
                 //查询所有叉车的状态
-                foreach (var item in DataCache.DictionaryForkLiftStatus)
+                foreach (var item in DataCache.DictionaryForkLiftStatus.Keys)
                 {
                     // 发送查询
-                    byte id = Convert.ToByte(item.Key.Split(':')[0].Split('.')[3]);
-                    if (Clients.TryGetValue(item.Key, out IChannel channel))
+                    ClientsID.TryGetValue(item, out byte id);
+                    if (Clients.TryGetValue(item, out IChannel channel))
                     {
                         await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestAGVStatus(id));
                     }
@@ -156,99 +177,116 @@ namespace GenSongWMS.BLL
         /// <param name="end"></param>
         /// <param name="delay"></param>
         /// <returns></returns>
-        public static async Task SetTask(string start, string end, int delay = 10)
+        public static async Task SetTask(string start, string end, string vids, int delay = 10)
         {
-            string id = null;
-            // 找空闲小车
-            foreach (var item in Clients)
+            string clientKey = null;
+            //// 找空闲小车
+            //foreach (var item in Clients.Keys)
+            //{
+            //    DataCache.DictionaryForkLiftStatus.TryGetValue(item, out ForkLiftStatus forkLiftStatusTemp);
+            //    if (forkLiftStatusTemp.state == ForkliftStatusEnum.Free)
+            //    {
+            //        clientKey = item;
+            //        break;
+            //    }
+            //}
+            //// 没有就算了
+            //if (clientKey == null)
+            //{
+            //    return;
+            //}
+            byte vid = Convert.ToByte(vids);
+            foreach (var item in ClientsID)
             {
-                DataCache.DictionaryForkLiftStatus.TryGetValue(item.Key, out ForkLiftStatus forkLiftStatusTemp);
-                if (forkLiftStatusTemp.state == ForkliftStatusEnum.Free)
+                if (item.Value == vid)
                 {
-                    id = item.Key;
-                    break;
+                    clientKey = item.Key;
                 }
             }
-            // 没有就算了
-            if (id == null)
-            {
-                return;
-            }
-            byte vid = Convert.ToByte(id.Split(':')[0].Split('.')[3]);
-            // 有就开始计算路径
-            DataCache.DictionaryForkLiftStatus.TryGetValue(id, out ForkLiftStatus forkLiftStatus);
-            // 去取货
-            // 数据缓存线程安全取值
-            if (!(DataCache.GetPath(forkLiftStatus.currentNodeNum.ToString(), start, out List<uint> arcList)
-                && DataCache.GetPoints(forkLiftStatus.currentNodeNum.ToString(), start, out List<uint> pointList)))
-            {
-                return;
-            }
+
+            //ClientsID.TryGetValue(clientKey, out byte vid);
+            //// 有就开始计算路径
+            //DataCache.DictionaryForkLiftStatus.TryGetValue(clientKey, out ForkLiftStatus forkLiftStatus);
+            //// 去取货
+            //// 数据缓存线程安全取值
+            //if (!(DataCache.GetPath(forkLiftStatus.currentNodeNum.ToString(), start, out List<uint> arcList)
+            //    && DataCache.GetPoints(forkLiftStatus.currentNodeNum.ToString(), start, out List<uint> pointList)))
+            //{
+            //    return;
+            //}
             // 开始执行
-            Clients.TryGetValue(id, out IChannel channel);
+            Clients.TryGetValue(clientKey, out IChannel channel);
             int tempDelay = 0;
-            for (int i = 0; i < arcList.Count; i++)
-            {
-                if (DataCache.DictionaryConfictPoint.TryGetValue(pointList[i + 1], out bool occupyingPoint)
-                    && DataCache.DictionaryConfictPath.TryGetValue(arcList[i], out bool occupyingArc))
-                {
-                    if (occupyingArc || occupyingPoint)
-                    {
-                        await Task.Delay(1000);
-                        i--;
-                        tempDelay++;
-                        if (tempDelay > delay)
-                        {
-                            DataCache.DictionaryTrafficJam.AddOrUpdate(id, true, (key, value) => { return value = true; });
-                        }
-                        continue;
-                    }
-                    else
-                    {
-                        // 占用
-                        DataCache.DictionaryConfictPoint.AddOrUpdate(pointList[i + 1], true, (key, value) => { return value = true; });
-                        DataCache.DictionaryConfictPath.AddOrUpdate(arcList[i + 1], true, (key, value) => { return value = true; });
-                        // 下发任务
-                        await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, arcList[i], 0, 0, 1, (uint)ACTStatus.AGV_ACT_MOVE));
-                        // 等待完成
-                        while (true)
-                        {
-                            DataCache.DictionaryForkLiftStatus.TryGetValue(id, out forkLiftStatus);
-                            if (forkLiftStatus.currentNodeNum == pointList[i + 1])
-                            {
-                                break;
-                            }
-                            await Task.Delay(500);
-                        }
-                        // 释放
-                        DataCache.DictionaryConfictPoint.AddOrUpdate(pointList[i], false, (key, value) => { return value = false; });
-                        DataCache.DictionaryConfictPath.AddOrUpdate(arcList[i + 1], false, (key, value) => { return value = false; });
-                        tempDelay = 0;
-                        DataCache.DictionaryTrafficJam.AddOrUpdate(id, false, (key, value) => { return value = false; });
-                    }
-                }
-                else
-                {
-                    await Task.Delay(1000);
-                    i--;
-                    continue;
-                }
-            }
-            // 取货
-            await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, Convert.ToUInt32(start), 0, 0, 1, (uint)ACTStatus.AGV_ACT_PICK));
-            await Task.Delay(1000);
+            //for (int i = 0; i < arcList.Count; i++)
+            //{
+            //    DataCache.DictionaryConfictPoint.TryGetValue(pointList[i], out bool occupyedPoint);
+            //    DataCache.DictionaryConfictPoint.TryGetValue(pointList[i + 1], out bool occupyingPoint);
+            //    DataCache.DictionaryConfictPath.TryGetValue(arcList[i], out bool occupyingArc);
+
+            //    if (occupyingArc || occupyingPoint)
+            //    {
+            //        await Task.Delay(1000);
+            //        i--;
+            //        tempDelay++;
+            //        if (tempDelay > delay)
+            //        {
+            //            DataCache.DictionaryTrafficJam.AddOrUpdate(clientKey, true, (key, value) => { return value = true; });
+            //        }
+            //        continue;
+            //    }
+            //    else
+            //    {
+            //        // 占用
+            //        try
+            //        {
+            //            DataCache.DictionaryConfictPoint.AddOrUpdate(pointList[i + 1], true, (key, value) => { return value = true; });
+            //            DataCache.DictionaryConfictPath.AddOrUpdate(arcList[i], true, (key, value) => { return value = true; });
+            //        }
+            //        catch (ArgumentOutOfRangeException)
+            //        {
+
+            //        }
+            //        // 下发任务
+            //        await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, arcList[i], 0, 0, 1, (uint)ACTStatus.AGV_ACT_MOVE));
+            //        // 等待完成
+            //        while (true)
+            //        {
+            //            DataCache.DictionaryForkLiftStatus.TryGetValue(clientKey, out forkLiftStatus);
+            //            if (forkLiftStatus.currentNodeNum == pointList[i + 1])
+            //            {
+            //                break;
+            //            }
+            //            await Task.Delay(500);
+            //        }
+            //        // 释放
+            //        try
+            //        {
+            //            DataCache.DictionaryConfictPoint.AddOrUpdate(pointList[i + 1], false, (key, value) => { return value = false; });
+            //            DataCache.DictionaryConfictPath.AddOrUpdate(arcList[i], false, (key, value) => { return value = false; });
+            //        }
+            //        catch (ArgumentOutOfRangeException)
+            //        {
+
+            //        }
+            //        tempDelay = 0;
+            //        DataCache.DictionaryTrafficJam.AddOrUpdate(clientKey, false, (key, value) => { return value = false; });
+            //    }
+            //}
+            //// 取货
+            //await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, Convert.ToUInt32(start), 0, 0, 1, (uint)ACTStatus.AGV_ACT_PICK));
+            //await Task.Delay(1000);
             // 送货
             // 数据缓存线程安全取值
-            if (!(DataCache.GetPath(start, end, out arcList)
-                && DataCache.GetPoints(start, end, out pointList)))
+            if (!(DataCache.GetPath(start, end, out List<uint> arcList)
+                && DataCache.GetPoints(start, end, out List<uint> pointList)))
             {
                 return;
             }
             // 开始执行
             for (int i = 0; i < arcList.Count; i++)
             {
-                if (DataCache.DictionaryConfictPoint.TryGetValue(pointList[i + 1], out bool occupyingPoint)
-                    && DataCache.DictionaryConfictPath.TryGetValue(arcList[i], out bool occupyingArc))
+                DataCache.DictionaryConfictPoint.TryGetValue(pointList[i + 1], out bool occupyingPoint);
+                DataCache.DictionaryConfictPath.TryGetValue(arcList[i], out bool occupyingArc);
                 {
                     if (occupyingArc || occupyingPoint)
                     {
@@ -258,44 +296,129 @@ namespace GenSongWMS.BLL
                         // 交通堵塞了
                         if (tempDelay > delay)
                         {
-                            DataCache.DictionaryTrafficJam.AddOrUpdate(id, true, (key, value) => { return value = true; });
+                            DataCache.DictionaryTrafficJam.AddOrUpdate(clientKey, true, (key, value) => { return value = true; });
                         }
                         continue;
                     }
                     else
                     {
                         // 占用
-                        DataCache.DictionaryConfictPoint.AddOrUpdate(pointList[i + 1], true, (key, value) => { return value = true; });
-                        DataCache.DictionaryConfictPath.AddOrUpdate(arcList[i + 1], true, (key, value) => { return value = true; });
+                        try
+                        {
+                            DataCache.DictionaryConfictPoint.AddOrUpdate(pointList[i + 1], true, (key, value) => { return value = true; });
+                            DataCache.DictionaryConfictPath.AddOrUpdate(arcList[i + 1], true, (key, value) => { return value = true; });
+                        }
+                        catch (ArgumentOutOfRangeException)
+                        {
+
+                        }
                         // 下发任务
                         await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, arcList[i], 0, 0, 1, (uint)ACTStatus.AGV_ACT_MOVE));
                         // 等待完成
                         while (true)
                         {
-                            DataCache.DictionaryForkLiftStatus.TryGetValue(id, out forkLiftStatus);
-                            if (forkLiftStatus.currentNodeNum == pointList[i + 1])
+                            DataCache.DictionaryForkLiftStatus.TryGetValue(clientKey, out ForkLiftStatus forkLiftStatus);
+                            if (forkLiftStatus.currentNodeNum == pointList[i + 1] && forkLiftStatus.state == ForkliftStatusEnum.Free)
                             {
                                 break;
                             }
                             await Task.Delay(500);
                         }
                         // 释放
-                        DataCache.DictionaryConfictPoint.AddOrUpdate(pointList[i], false, (key, value) => { return value = false; });
-                        DataCache.DictionaryConfictPath.AddOrUpdate(arcList[i + 1], false, (key, value) => { return value = false; });
+                        try
+                        {
+                            DataCache.DictionaryConfictPoint.AddOrUpdate(pointList[i], false, (key, value) => { return value = false; });
+                            DataCache.DictionaryConfictPath.AddOrUpdate(arcList[i + 1], false, (key, value) => { return value = false; });
+                        }
+                        catch (ArgumentOutOfRangeException)
+                        {
+
+                        }
                         tempDelay = 0;
-                        DataCache.DictionaryTrafficJam.AddOrUpdate(id, false, (key, value) => { return value = false; });
+                        DataCache.DictionaryTrafficJam.AddOrUpdate(clientKey, false, (key, value) => { return value = false; });
                     }
-                }
-                else
-                {
-                    await Task.Delay(1000);
-                    i--;
-                    continue;
                 }
             }
             // 卸货
-            await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, Convert.ToUInt32(end), 0, 0, 1, (uint)ACTStatus.AGV_ACT_DROP));
+            //await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, Convert.ToUInt32(end), 0, 0, 1, (uint)ACTStatus.AGV_ACT_DROP));
             await Task.Delay(1000);
+        }
+
+        public static async Task SetTask2(string start, string end, int delay = 10)
+        {
+            string clientKey = null;
+            // 找空闲小车
+            foreach (var item in Clients.Keys)
+            {
+                DataCache.DictionaryForkLiftStatus.TryGetValue(item, out ForkLiftStatus forkLiftStatusTemp);
+                if (forkLiftStatusTemp.state == ForkliftStatusEnum.Free)
+                {
+                    clientKey = item;
+                    break;
+                }
+            }
+            // 没有就算了
+            if (clientKey == null)
+            {
+                return;
+            }
+            ClientsID.TryGetValue(clientKey, out byte vid);
+            if (vid == 1)
+            {
+                if (!(DataCache.GetPath(start, end, out List<uint> arcList)
+                    && DataCache.GetPoints(start, end, out List<uint> pointList)))
+                {
+                    return;
+                }
+                Clients.TryGetValue(clientKey, out IChannel channel);
+                var x = GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, arcList[0], 0, 0, 1, (uint)ACTStatus.AGV_ACT_MOVE);
+                await channel.WriteAndFlushAsync(x);
+            }
+
+        }
+
+        public static async Task SetTask3(string start, string end, int delay = 10)
+        {
+            string clientKey = null;
+            // 找空闲小车
+            foreach (var item in Clients.Keys)
+            {
+                DataCache.DictionaryForkLiftStatus.TryGetValue(item, out ForkLiftStatus forkLiftStatusTemp);
+                if (forkLiftStatusTemp.state == ForkliftStatusEnum.Free)
+                {
+                    clientKey = item;
+                    break;
+                }
+            }
+            // 没有就算了
+            if (clientKey == null)
+            {
+                return;
+            }
+            ClientsID.TryGetValue(clientKey, out byte vid);
+            DataCache.GetPath(start, end, out List<uint> arcList);
+            DataCache.GetPoints(start, end, out List<uint> pointList);
+            DataCache.GetPath(end, start, out List<uint> arcList1);
+            DataCache.GetPoints(end, start, out List<uint> pointList1);
+            Clients.TryGetValue(clientKey, out IChannel channel);
+            for (int i = 0; i < 20; i++)
+            {
+                DataCache.DictionaryForkLiftStatus.TryGetValue(clientKey, out ForkLiftStatus forkLiftStatusTemp);
+                if (forkLiftStatusTemp.state == ForkliftStatusEnum.Free  && forkLiftStatusTemp.currentNodeNum == uint.Parse(end))
+                {
+                    await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, arcList[0], 0, 0, 1, (uint)ACTStatus.AGV_ACT_MOVE));
+                }
+                else if(forkLiftStatusTemp.state == ForkliftStatusEnum.Free && forkLiftStatusTemp.currentNodeNum == uint.Parse(start))
+                {
+                    await channel.WriteAndFlushAsync(GenSongClientHandler.SetRequestSingleTask(vid, DataCache.NewTaskID(), 1, arcList1[0], 0, 0, 1, (uint)ACTStatus.AGV_ACT_MOVE));
+                }
+            }
+
+        }
+
+        public static byte[] GetVs()
+        {
+            return GenSongClientHandler.SetRequestSingleTask(1, DataCache.NewTaskID(), 1, 23, 0, 0, 1, (uint)ACTStatus.AGV_ACT_MOVE).Array;
         }
     }
 }
